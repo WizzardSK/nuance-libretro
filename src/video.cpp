@@ -2,6 +2,7 @@
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include <mutex>
+#include <vector>
 #include "gl_headers.h"
 
 #include "GLWindow.h"
@@ -536,6 +537,76 @@ static void DrawChannelQuadWithAttributes(const uint32 activeChannels)
 }
 
 #ifdef LIBRETRO
+// RetroArch's GL state as the core found it at the start of the last frame:
+// a buffer it left bound turns the core's client-side vertex pointers and
+// texture uploads into offsets into that buffer, and blending, scissoring,
+// culling or a colour mask it left on can make the quad draw nothing - none of
+// which raises a GL error (issue #79)
+static GLint diagFound[10];
+
+static void ResetFrontendGLState()
+{
+  glGetIntegerv(GL_ARRAY_BUFFER_BINDING, &diagFound[0]);
+  glGetIntegerv(GL_PIXEL_UNPACK_BUFFER_BINDING, &diagFound[1]);
+  glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &diagFound[2]);
+  diagFound[3] = glIsEnabled(GL_BLEND);
+  diagFound[4] = glIsEnabled(GL_SCISSOR_TEST);
+  diagFound[5] = glIsEnabled(GL_CULL_FACE);
+  diagFound[6] = glIsEnabled(GL_DEPTH_TEST);
+  diagFound[7] = glIsEnabled(GL_STENCIL_TEST);
+  GLboolean mask[4] = { GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE };
+  glGetBooleanv(GL_COLOR_WRITEMASK, mask);
+  diagFound[8] = (mask[0] ? 8 : 0) | (mask[1] ? 4 : 0) | (mask[2] ? 2 : 0) | (mask[3] ? 1 : 0);
+  glGetIntegerv(GL_CURRENT_PROGRAM, &diagFound[9]);
+
+  // What the core's drawing assumes, set every frame: the frontend may have
+  // changed any of it since the last one
+  glBindBuffer(GL_ARRAY_BUFFER, 0);
+  glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
+  glDisable(GL_BLEND);
+  glDisable(GL_SCISSOR_TEST);
+  glDisable(GL_CULL_FACE);
+  glDisable(GL_DEPTH_TEST);
+  glDisable(GL_STENCIL_TEST);
+  glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+}
+
+// The same, and what the core's own program and main texture hold
+void VideoDebugGLState(char *out, size_t size)
+{
+  const GLuint program = shaderProgram.GetProgramObject();
+  GLint linked = 0, sampler = -1;
+  if(program)
+  {
+    glGetProgramiv(program, GL_LINK_STATUS, &linked);
+    const GLint loc = glGetUniformLocation(program, "mainChannelSampler");
+    if(loc >= 0)
+      glGetUniformiv(program, loc, &sampler);
+  }
+  GLint vp[4] = {};
+  glGetIntegerv(GL_VIEWPORT, vp);
+  GLint tw = 0, th = 0;
+  uint32 nonzero = 0, sampled = 0;
+  glActiveTexture(mainTextureUnit);
+  glBindTexture(TEXTURE_TARGET, videoTexInfo.mainTexName);
+  glGetTexLevelParameteriv(TEXTURE_TARGET, 0, GL_TEXTURE_WIDTH, &tw);
+  glGetTexLevelParameteriv(TEXTURE_TARGET, 0, GL_TEXTURE_HEIGHT, &th);
+#if !defined(NUANCE_GLES)
+  if(tw > 0 && th > 0 && tw <= 4096 && th <= 4096)
+  {
+    std::vector<uint8> pixels((size_t)tw * th * 4);
+    glPixelStorei(GL_PACK_ALIGNMENT, 1);
+    glGetTexImage(TEXTURE_TARGET, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels.data());
+    for(size_t i = 0; i < pixels.size(); i += 13, sampled++)
+      nonzero += pixels[i] != 0;
+  }
+#endif
+  snprintf(out, size, "found: array buffer %d, unpack buffer %d, VAO %d, blend %d, scissor %d, cull %d, depth %d, stencil %d, color mask %X, program %d; "
+    "core program %u linked %d sampler %d, viewport %d,%d %dx%d, main texture %dx%d (%u of %u sampled bytes nonzero)",
+    diagFound[0], diagFound[1], diagFound[2], diagFound[3], diagFound[4], diagFound[5], diagFound[6], diagFound[7], diagFound[8], diagFound[9],
+    (unsigned)program, linked, sampler, vp[0], vp[1], vp[2], vp[3], tw, th, (unsigned)nonzero, (unsigned)sampled);
+}
+
 // For the core's log: whether there is a picture to show, and whether the
 // Nuon's main channel holds anything but zeros (issue #79, a black screen)
 void VideoDebugState(char *out, size_t size)
@@ -559,6 +630,9 @@ void VideoDebugState(char *out, size_t size)
 
 void RenderVideo(const int winwidth, const int winheight)
 {
+#ifdef LIBRETRO
+  ResetFrontendGLState();
+#endif
   if(!bCanDisplayVideo)
   {
     // No rendered frame yet - so clear the back buffer to black and present so

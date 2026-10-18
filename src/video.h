@@ -107,6 +107,7 @@ void InitializeColorSpaceTables();
 void RenderVideo(int width, int height);
 #ifdef LIBRETRO
 void VideoDebugState(char *out, size_t size);
+void VideoDebugGLState(char *out, size_t size);
 #endif
 void VideoCleanup();
 void IncrementVideoFieldCounter();

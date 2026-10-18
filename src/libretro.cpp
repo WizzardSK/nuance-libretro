@@ -529,6 +529,17 @@ void retro_run(void)
         // Once: what a black screen comes down to is in these.
         static bool reported = false;
         const GLenum fbStatus = reported ? GL_FRAMEBUFFER_COMPLETE : glCheckFramebufferStatus(GL_FRAMEBUFFER);
+        static unsigned frames = 0;
+        ++frames;
+        const bool diagFrame = frames == 300 || frames == 1200 || frames == 3600;
+        // On those frames the framebuffer is filled with magenta first: if it
+        // is still magenta after drawing, the quad did not cover it; if it is
+        // black, the quad drew black (#79)
+        if (diagFrame) {
+            glClearColor(1.0f, 0.0f, 1.0f, 1.0f);
+            glClear(GL_COLOR_BUFFER_BIT);
+            glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+        }
         RenderVideo(FB_WIDTH, FB_HEIGHT);
         if (!reported) {
             reported = true;
@@ -541,9 +552,7 @@ void retro_run(void)
         // RetroArch's framebuffer - which of the three a black screen is
         // (#79). At about 5, 20 and 60 seconds.
         {
-            static unsigned frames = 0;
-            ++frames;
-            if (frames == 300 || frames == 1200 || frames == 3600) {
+            if (diagFrame) {
                 char state[256];
                 VideoDebugState(state, sizeof(state));
                 const GLenum err = glGetError();
@@ -554,6 +563,9 @@ void retro_run(void)
                 log_printf("libretro: frame %u: %s; GL error 0x%04X; framebuffer %u pixels %02X%02X%02X %02X%02X%02X %02X%02X%02X\n",
                     frames, state, (unsigned)err, (unsigned)hw_render.get_current_framebuffer(),
                     px[0][0], px[0][1], px[0][2], px[1][0], px[1][1], px[1][2], px[2][0], px[2][1], px[2][2]);
+                char gl_state[512];
+                VideoDebugGLState(gl_state, sizeof(gl_state));
+                log_printf("libretro: frame %u GL: %s\n", frames, gl_state);
             }
         }
         video_cb(RETRO_HW_FRAME_BUFFER_VALID, FB_WIDTH, FB_HEIGHT, 0);

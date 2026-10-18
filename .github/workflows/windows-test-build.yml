@@ -1,0 +1,35 @@
+name: windows x64 test build
+
+# A Windows core for testers, built on a push of this branch (issue #79)
+on:
+  push:
+    branches: [black-screen-diag]
+  workflow_dispatch:
+
+jobs:
+  windows_x64:
+    name: windows-x64 (mingw)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+        with: { submodules: recursive }
+      - run: |
+          sudo apt-get update -qy
+          sudo apt-get install -yq mingw-w64
+      - run: |
+          cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_LIBRETRO=ON \
+            -DCMAKE_SYSTEM_NAME=Windows -DCMAKE_SYSTEM_PROCESSOR=x86_64 \
+            -DCMAKE_C_COMPILER=x86_64-w64-mingw32-gcc -DCMAKE_CXX_COMPILER=x86_64-w64-mingw32-g++ \
+            -DCMAKE_RC_COMPILER=x86_64-w64-mingw32-windres \
+            -DCMAKE_FIND_ROOT_PATH=/usr/x86_64-w64-mingw32 \
+            -DCMAKE_FIND_ROOT_PATH_MODE_PROGRAM=NEVER \
+            -DCMAKE_FIND_ROOT_PATH_MODE_LIBRARY=ONLY \
+            -DCMAKE_FIND_ROOT_PATH_MODE_INCLUDE=ONLY \
+            -B build
+      - run: cmake --build build --parallel 4
+      - run: file build/nuance_libretro.dll && x86_64-w64-mingw32-objdump -p build/nuance_libretro.dll | grep "DLL Name"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nuance_libretro-windows-x64
+          path: build/nuance_libretro.dll
+          if-no-files-found: error
