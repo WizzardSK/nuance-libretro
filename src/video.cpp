@@ -576,9 +576,14 @@ void VideoDebugGLState(char *out, size_t size)
 {
   const GLuint program = shaderProgram.GetProgramObject();
   GLint linked = 0, sampler = -1;
+  GLint attribs[4] = { -1, -1, -1, -1 };
   if(program)
   {
     glGetProgramiv(program, GL_LINK_STATUS, &linked);
+    attribs[0] = glGetAttribLocation(program, "a_position");
+    attribs[1] = glGetAttribLocation(program, "a_texcoord0");
+    attribs[2] = glGetAttribLocation(program, "a_texcoord1");
+    attribs[3] = glGetAttribLocation(program, "a_texcoord2");
     const GLint loc = glGetUniformLocation(program, "mainChannelSampler");
     if(loc >= 0)
       glGetUniformiv(program, loc, &sampler);
@@ -602,9 +607,9 @@ void VideoDebugGLState(char *out, size_t size)
   }
 #endif
   snprintf(out, size, "found: array buffer %d, unpack buffer %d, VAO %d, blend %d, scissor %d, cull %d, depth %d, stencil %d, color mask %X, program %d; "
-    "core program %u linked %d sampler %d, viewport %d,%d %dx%d, main texture %dx%d (%u of %u sampled bytes nonzero)",
+    "core program %u linked %d sampler %d, attributes %d %d %d %d, viewport %d,%d %dx%d, main texture %dx%d (%u of %u sampled bytes nonzero)",
     diagFound[0], diagFound[1], diagFound[2], diagFound[3], diagFound[4], diagFound[5], diagFound[6], diagFound[7], diagFound[8], diagFound[9],
-    (unsigned)program, linked, sampler, vp[0], vp[1], vp[2], vp[3], tw, th, (unsigned)nonzero, (unsigned)sampled);
+    (unsigned)program, linked, sampler, attribs[0], attribs[1], attribs[2], attribs[3], vp[0], vp[1], vp[2], vp[3], tw, th, (unsigned)nonzero, (unsigned)sampled);
 }
 
 // For the core's log: whether there is a picture to show, and whether the

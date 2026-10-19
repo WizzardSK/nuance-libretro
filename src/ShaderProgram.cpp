@@ -244,6 +244,8 @@ bool ShaderProgram::Link()
   if(!hProgramObject || !(bVertexShaderObjectAttached || bFragmentShaderObjectAttached))
     return false;
 
+  // A compatibility context draws nothing unless attribute 0 is an enabled array; NVIDIA holds to it (#79)
+  glBindAttribLocation(hProgramObject, 0, "a_position");
   glLinkProgram(hProgramObject);
   GLint bLinked = GL_FALSE;
   glGetProgramiv(hProgramObject, GL_LINK_STATUS, &bLinked);
@@ -354,6 +356,8 @@ bool ShaderProgram::CompileAndLinkShaders()
     }
   }
 
+  // A compatibility context draws nothing unless attribute 0 is an enabled array; NVIDIA holds to it (#79)
+  glBindAttribLocation(hProgramObject, 0, "a_position");
   glLinkProgram(hProgramObject);
   GLint bLinked;
   glGetProgramiv(hProgramObject, GL_LINK_STATUS, &bLinked);
