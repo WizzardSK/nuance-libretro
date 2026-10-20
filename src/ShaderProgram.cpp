@@ -104,9 +104,18 @@ bool ShaderProgram::InstallShaderSourceFromFile(const char * const filename, GLe
 {
   bool bStatus = false;
 
-  FILE *inFile;
+  FILE *inFile = nullptr;
+#ifdef LIBRETRO
+  // The core's own shaders only: a .vs/.fs found on disk - in the working
+  // directory or beside RetroArch, where a standalone Nuance or a launcher
+  // may have put them - can be an older version the core's drawing does not
+  // match (no a_position: NVIDIA then draws nothing, issue #79)
+  errno_t err = 1;
+  if(false)
+#else
   errno_t err = fopen_s(&inFile,filename,"rb");
   if(err != 0)
+#endif
   {
     char tmp[1024];
     GetModuleFileName(NULL, tmp, 1024);
