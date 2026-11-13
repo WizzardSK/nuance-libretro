@@ -14,8 +14,8 @@ jobs:
           # Both slices on the Apple Silicon runner: the Intel ones queue for
           # hours now, and the x86_64 slice cross-compiles the way the buildbot's
           # osx-cmake template does anyway.
-          - { runner: macos-14, name: "osx-x64", arch: x86_64 }
-          - { runner: macos-14, name: "osx-arm64", arch: arm64 }
+          - { runner: macos-15, name: "osx-x64", arch: x86_64 }
+          - { runner: macos-15, name: "osx-arm64", arch: arm64 }
     name: ${{ matrix.name }}
     runs-on: ${{ matrix.runner }}
     steps:
@@ -81,7 +81,7 @@ jobs:
 
   ios:
     name: ios-arm64
-    runs-on: macos-14
+    runs-on: macos-15
     steps:
       - uses: actions/checkout@v5
         with: { submodules: recursive }
@@ -93,6 +93,10 @@ jobs:
             -B build
       - run: cmake --build build --target nuance_libretro --parallel 3
       - run: find build -name 'nuance_libretro*' -exec file {} \;
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nuance_libretro-ios-arm64
+          path: build/nuance_libretro*
 
   # tvOS is in .gitlab-ci.yml as libretro-build-tvos-arm64 but was the one
   # target nothing here ever compiled. It differs from iOS in ways that matter
@@ -101,7 +105,7 @@ jobs:
   # finding out on the buildbot.
   tvos-arm64:
     name: tvos-arm64
-    runs-on: macos-14
+    runs-on: macos-15
     steps:
       - uses: actions/checkout@v5
         with: { submodules: recursive }
