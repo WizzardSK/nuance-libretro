@@ -19,6 +19,11 @@
 // Returns an empty string if extraction failed or no boot file could be found
 std::string ResolveGameFile(const char* inputPath);
 
+// Where temp dirs go when the system's (TMPDIR, /tmp) cannot be written, as
+// in an iOS app's or an Android app's sandbox: the libretro core sets it to a
+// folder of its frontend's
+void SetTempBase(const std::string& dir);
+
 // Tear down any temp dirs / mounts created by ResolveGameFile()
 // Call once at shutdown, but safe to call multiple times
 void CleanupArchives();

@@ -135,6 +135,13 @@ std::string ExtractIsoBootAndArmDataReads(const char* isoPath, const std::string
   return dstPath;
 }
 
+static std::string g_tempBase;
+
+void SetTempBase(const std::string& dir)
+{
+  g_tempBase = dir;
+}
+
 std::string MakeTempDir()
 {
 #ifdef _WIN32
@@ -150,9 +157,24 @@ std::string MakeTempDir()
   }
   return std::string();
 #else
-  char tmpl[] = "/tmp/nuance_XXXXXX";
-  char* dir = mkdtemp(tmpl);
-  return dir ? std::string(dir) : std::string();
+  // /tmp alone failed in an app sandbox (iOS, Android), where nothing could
+  // be extracted and every ISO, ZIP and CHD was "not a NUON game" (#84)
+  std::vector<std::string> bases;
+  if (const char* t = getenv("TMPDIR"); t && *t)
+    bases.push_back(t);
+  bases.push_back("/tmp");
+  if (!g_tempBase.empty())
+    bases.push_back(g_tempBase);
+  for (std::string base : bases) {
+    while (base.size() > 1 && base.back() == '/')
+      base.pop_back();
+    std::string tmpl = base + "/nuance_XXXXXX";
+    std::vector<char> buf(tmpl.begin(), tmpl.end());
+    buf.push_back('\0');
+    if (char* dir = mkdtemp(buf.data()))
+      return std::string(dir);
+  }
+  return std::string();
 #endif
 }
 

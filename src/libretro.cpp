@@ -345,6 +345,21 @@ bool retro_load_game(const struct retro_game_info *game)
         log_printf("libretro: HW render OK\n"); fflush(stderr);
     }
 
+    // Somewhere to extract to where the system's temp folder cannot be
+    // written (iOS, Android): a folder in RetroArch's saves directory
+    {
+        const char* saveDir = nullptr;
+        if (environ_cb(RETRO_ENVIRONMENT_GET_SAVE_DIRECTORY, &saveDir) && saveDir && *saveDir) {
+            const std::string base = std::string(saveDir) + "/nuance";
+#ifdef _WIN32
+            _mkdir(base.c_str());
+#else
+            mkdir(base.c_str(), 0755);
+#endif
+            SetTempBase(base);
+        }
+    }
+
     // Find game file
     log_printf("libretro: ResolveGameFile(%s)...\n", game->path); fflush(stderr);
     std::string gamePath = ResolveGameFile(game->path);
