@@ -135,12 +135,7 @@ std::string ExtractIsoBootAndArmDataReads(const char* isoPath, const std::string
   return dstPath;
 }
 
-static std::string g_tempBase;
-
-void SetTempBase(const std::string& dir)
-{
-  g_tempBase = dir;
-}
+std::string g_tempBase; // SetTempBase
 
 std::string MakeTempDir()
 {
@@ -468,6 +463,11 @@ std::string MountAndFind(const char* archivePath)
 #endif // _WIN32
 
 } // anonymous namespace
+
+void SetTempBase(const std::string& dir)
+{
+  g_tempBase = dir;
+}
 
 //
 
